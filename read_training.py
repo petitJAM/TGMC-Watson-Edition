@@ -1,19 +1,23 @@
 # Read the training sample
 
 import csv
-import pprint
 
-training_data_filename = "TGMC-training-sample.csv"
-output_filename = "output.csv"
+import pprint
 pp = pprint.PrettyPrinter()
 
-with open(training_data_filename) as training_data:
-    # get the length of the row
-    row_len_reader = csv.reader(training_data)
-    row_length = len(row_len_reader.next())
-    del row_len_reader
+dataset_dir = "datasets/"
+output_dir = "output/"
 
+training_data_filename = dataset_dir + "tgmctrain.csv"
+evaluation_data_filename = dataset_dir + "tgmcevaluation.csv"
+
+output_filename = output_dir + "output.csv"
+
+
+with open(training_data_filename) as training_data:
     reader = csv.reader(training_data)
+
+    print "Opened CSV"
     
     csv_data = []
     for row in reader:
@@ -29,6 +33,13 @@ with open(training_data_filename) as training_data:
                 else:
                     print "Something weird appeared"
         csv_data.append(row_data)
+
+    row_length = len(csv_data[0])
+
+    print "There are", len(csv_data), "rows with length", row_length, "and", row_length - 3, "features"
+
+    print "Reading Data complete"
+
 
 data_by_qid = []
 i, j = 0, 0
