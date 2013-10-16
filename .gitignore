@@ -1,6 +1,8 @@
 # Datasets
 datasets/*
 
+# pickles, if I get them to work...
+*.p
 
 *.py[cod]
 
