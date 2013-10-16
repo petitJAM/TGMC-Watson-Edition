@@ -15,7 +15,7 @@ output_dir = "output/"
 # evaluation_data_filename = dataset_dir + "tgmcevaluation.csv"
 
 training_data_filename = dataset_dir + "training_clipped.csv"
-evaluation_data_filename = dataset_dir + "evaluation_clipped.csv"
+evaluation_data_filename = dataset_dir + "tgmcevaluation.csv" #"evaluation_clipped.csv"
 
 output_filename = output_dir + "output.csv"
 
@@ -25,8 +25,10 @@ nFeatures = 318   #obtained from previous runs
 
 nHiddenLayers = 4
 training_iterations = 1
-learningRate = 0.01
+learningRate = 0.05
 momentum = 0.99
+lrDecay = 0
+weightDecay = 0
 
 def createSupervisedDataSetFromCSVFile(input_file):
 	# init the dataset
@@ -39,13 +41,13 @@ def createSupervisedDataSetFromCSVFile(input_file):
 
 	    for row in reader:
 	        row_data = []
-	        correct = None
+	        correct = 0 
 	        for data in row:
 	            try:
 	                row_data.append(float(data))
 	            except ValueError:
 	                if data == "true":
-	                    correct = 1
+	                    correct = 100
 	                elif data == "false":
 	                    correct = 0
 	                else:
@@ -81,6 +83,28 @@ def createUnsupervisedDataSetFromCSVFile(input_file):
 
 	return ds
 
+def openEvaluationData(input_file):
+	# init the dataset
+	print "Creating a dataset from", input_file
+
+	ds = [] 
+
+	with open(input_file) as training_data:
+	    reader = csv.reader(training_data)
+
+	    for row in reader:
+	        row_data = []
+	        for data in row:
+	            try:
+	                row_data.append(float(data))
+	            except ValueError:
+	            	print "Non-floatable value!"
+
+	        ds.append(tuple(row_data[2:])) # drop the Qid and Aid
+
+	return ds
+
+
 def main():
 
 	print "Loading the training dataset..."
@@ -93,18 +117,30 @@ def main():
 	net = buildNetwork(ds.indim, nHiddenLayers, ds.outdim, recurrent=True)
 
 	print "Create trainer..."
-	# print "learningRate:", learningRate
-	# print "momentum:", momentum
-	trainer = BackpropTrainer(net, ds)
+	print "learningRate:", learningRate
+	print "momentum:", momentum
+	print "lrDecay:", lrDecay
+	print "weightDecay:", weightDecay
+	trainer = BackpropTrainer(net, ds, learningrate=learningRate, lrdecay=lrDecay, momentum=momentum, batchlearning=False, weightdecay=weightDecay)
 
 	print "Training network", training_iterations, "times..."
 	for _ in range(training_iterations):
 		trainer.train()
 
 	print "Loading the evaluation dataset..."
-	test_data = createUnsupervisedDataSetFromCSVFile(evaluation_data_filename)
+	test_data = openEvaluationData(evaluation_data_filename)
 
+	test_results = []
 
+	for d in test_data:
+		test_results.append(net.activate(d))
+
+	print sum(test_results) / len(test_results)
+	highest = max(test_results)
+	print highest, test_results.index(highest)
+	print min(test_results)
+
+	#trainer.testOnData(test_data, verbose=True)
 
 
 
