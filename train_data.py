@@ -1,6 +1,6 @@
+#!/usr/bin/python
 
-# CSV
-import csv
+import csv, cPickle as pickle, time
 
 # PyBrain imports
 from pybrain.datasets import SupervisedDataSet, UnsupervisedDataSet
@@ -11,11 +11,15 @@ from pybrain.structure.modules import TanhLayer
 dataset_dir = "datasets/"
 output_dir = "output/"
 
-# training_data_filename = dataset_dir + "tgmctrain.csv"
-# evaluation_data_filename = dataset_dir + "tgmcevaluation.csv"
+td_fn = "tgmctrain.csv"
+td_fn = "training_clipped.csv"
+ed_fn = "tgmcevaluation.csv"
 
-training_data_filename = dataset_dir + "training_clipped.csv"
-evaluation_data_filename = dataset_dir + "tgmcevaluation.csv" #"evaluation_clipped.csv"
+training_data_filename = dataset_dir + td_fn
+evaluation_data_filename = dataset_dir + ed_fn
+
+training_data_pickle_name = td_fn + ".p"
+evaluation_data_pickle_name = ed_fn + ".p"
 
 output_filename = output_dir + "output.csv"
 
@@ -32,7 +36,7 @@ weightDecay = 0
 
 def createSupervisedDataSetFromCSVFile(input_file):
 	# init the dataset
-	print "Creating a dataset from", input_file
+	print "Creating a supervised dataset from", input_file
 
 	ds = SupervisedDataSet(nFeatures, 1)
 
@@ -62,7 +66,7 @@ def createSupervisedDataSetFromCSVFile(input_file):
 
 def createUnsupervisedDataSetFromCSVFile(input_file):
 	# init the dataset
-	print "Creating a dataset from", input_file
+	print "Creating an unsupervised dataset from", input_file
 
 	ds = UnsupervisedDataSet(nFeatures)
 
@@ -100,21 +104,41 @@ def openEvaluationData(input_file):
 	            except ValueError:
 	            	print "Non-floatable value!"
 
-	        ds.append(tuple(row_data[2:])) # drop the Qid and Aid
+	        ds.append((row_data[:2], tuple(row_data[2:]))) # drop the Qid and Aid
 
 	return ds
 
 
 def main():
+	startTime()
+	####################
 
 	print "Loading the training dataset..."
-	ds = createSupervisedDataSetFromCSVFile(training_data_filename)
 
-	with open("training.p", 'w') as p:
-		ds.save_pickle(p)
+	try: # Try to load the saved object from a pickle
+		with open(training_data_pickle_name) as p:
+			print "Loading from pickle"
+			ds = pickle.load(p)
+
+	except IOError: # Pickle file didn't exists
+		print "Loading from CSV"
+		print "This is where the dataset trimming would go"
+		ds = createSupervisedDataSetFromCSVFile(training_data_filename)
+
+		# with open(training_data_pickle_name, 'w') as p:
+		# 	print "Saving pickle..."
+		# 	ds.save_pickle(p)
+
+	print "Loading took", nextTime(), "seconds"
+
+	####################
 
 	print "Building Network..."
 	net = buildNetwork(ds.indim, nHiddenLayers, ds.outdim, recurrent=True)
+
+	# print "Build Network took", nextTime(), "seconds"
+
+	####################
 
 	print "Create trainer..."
 	print "learningRate:", learningRate
@@ -123,26 +147,68 @@ def main():
 	print "weightDecay:", weightDecay
 	trainer = BackpropTrainer(net, ds, learningrate=learningRate, lrdecay=lrDecay, momentum=momentum, batchlearning=False, weightdecay=weightDecay)
 
+	# print "Create Trainer took", nextTime(), "seconds"
+
+	####################
+
 	print "Training network", training_iterations, "times..."
 	for _ in range(training_iterations):
-		trainer.train()
+		print "Error in training:", trainer.train() # Save this error and use as a confidence?
+
+	print "Training took", nextTime(), "seconds"
+
+	####################
 
 	print "Loading the evaluation dataset..."
 	test_data = openEvaluationData(evaluation_data_filename)
 
+	print "Testing took", nextTime(), "seconds"
+
 	test_results = []
 
 	for d in test_data:
-		test_results.append(net.activate(d))
+		test_results.append((d[0], net.activate(d[1])[0]))
 
-	print sum(test_results) / len(test_results)
+	print "Average score:", sum([t[1] for t in test_results]) / len(test_results)
+
 	highest = max(test_results)
-	print highest, test_results.index(highest)
-	print min(test_results)
+	smallest = min(test_results)
+	test_results.sort(key=lambda x: x[1])
+	print "Top 10", test_results[-10:]
+	print "Max:", highest, "  Min:", smallest
+
+	# clear file
+	open("answers.txt", 'w').close()
+
+	# write to answers.txt
+	with open("answers.txt", 'w') as ans:
+		for a in [int(a[0][0]) for a in test_results[-10:]]:
+			print a
+			ans.write(str(a))
+			ans.write("\n")
 
 	#trainer.testOnData(test_data, verbose=True)
 
+####################
 
+last_time = None
+def startTime():
+	global last_time
+	last_time = time.time()
+
+# returns the amount of time passed since the last call to this
+# must call startTime before this
+def nextTime():
+	global last_time
+	if last_time is None:
+		return -1
+
+	old_time = last_time
+	last_time = time.time()
+
+	return (last_time - old_time)
+
+####################
 
 if __name__ == '__main__':
 	main()

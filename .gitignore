@@ -1,6 +1,9 @@
 # Datasets
 datasets/*
 
+# Answers file
+answers.txt
+
 # pickles, if I get them to work...
 *.p
 
