@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import csv, cPickle as pickle, time
+import csv, cPickle as pickle, time, random
 
 # PyBrain imports
 from pybrain.datasets import SupervisedDataSet, UnsupervisedDataSet
@@ -12,7 +12,7 @@ dataset_dir = "datasets/"
 output_dir = "output/"
 
 td_fn = "tgmctrain.csv"
-td_fn = "training_clipped.csv"
+# td_fn = "training_clipped.csv"
 ed_fn = "tgmcevaluation.csv"
 
 training_data_filename = dataset_dir + td_fn
@@ -27,18 +27,61 @@ nFeatures = 318   #obtained from previous runs
 
 # Configs
 
-nHiddenLayers = 4
+nHiddenLayers = 2
 training_iterations = 1
 learningRate = 0.05
 momentum = 0.99
 lrDecay = 0
 weightDecay = 0
 
+topN = 100
+
+def createBetterSupervisedDataSet(input_file):
+	print "Creating a BETTER supervised dataset from", input_file
+
+	ds = SupervisedDataSet(nFeatures, 1)
+
+	with open(input_file) as training_data:
+		reader = csv.reader(training_data)
+
+		answer_by_question = {}
+		for row in reader:
+
+			row_data = []
+			correct = 0
+
+			for data in row:
+				try:
+					row_data.append(float(data))
+				except ValueError:
+					if data == 'true':
+						correct = 100
+					elif data == 'false':
+						correct = 0
+					else:
+						print "Something weird appeared"
+
+			current_qid = row_data[1]
+
+			if current_qid not in answer_by_question:
+				answer_by_question[current_qid] = []
+
+			answer_by_question[current_qid].append((correct, row_data[2:]))
+
+		for qid in answer_by_question.keys():
+			print qid, answer_by_question[qid]
+
+	# loop to load stuff into ds
+
+
+
 def createSupervisedDataSetFromCSVFile(input_file):
 	# init the dataset
 	print "Creating a supervised dataset from", input_file
 
 	ds = SupervisedDataSet(nFeatures, 1)
+
+	correct_count = 0
 
 	with open(input_file) as training_data:
 	    reader = csv.reader(training_data)
@@ -57,9 +100,16 @@ def createSupervisedDataSetFromCSVFile(input_file):
 	                else:
 	                    print "Something weird appeared"
 
+	        if correct:
+	        	correct_count += 1
+
+	        if (not correct) and (random.random() > 0.9999):
+	        	break
+
 	        ds.addSample(tuple(row_data[2:]), (correct,)) # drop the Qid and Aid
 
 	print "Dataset created with size", len(ds), "and", ds.indim, "features."
+	print "Found", correct_count, "correct answers"
 
 	return ds
 
@@ -130,6 +180,7 @@ def main():
 		# 	ds.save_pickle(p)
 
 	print "Loading took", nextTime(), "seconds"
+	print
 
 	####################
 
@@ -182,7 +233,7 @@ def main():
 
 	# write to answers.txt
 	with open("answers.txt", 'w') as ans:
-		for a in [int(a[0][0]) for a in test_results[-10:]]:
+		for a in [int(a[0][0]) for a in test_results[-topN:]]:
 			print a
 			ans.write(str(a))
 			ans.write("\n")
@@ -210,5 +261,28 @@ def nextTime():
 
 ####################
 
+def other_main():
+	startTime()
+	####################
+
+	print "Loading the training dataset..."
+
+	try: # Try to load the saved object from a pickle
+		with open(training_data_pickle_name) as p:
+			print "Loading from pickle"
+			ds = pickle.load(p)
+
+	except IOError: # Pickle file didn't exists
+		print "Loading from CSV"
+		print "This is where the dataset trimming would go"
+		ds = createBetterSupervisedDataSet(training_data_filename)
+
+		# with open(training_data_pickle_name, 'w') as p:
+		# 	print "Saving pickle..."
+		# 	ds.save_pickle(p)
+
+	print "Loading took", nextTime(), "seconds"
+	print
+
 if __name__ == '__main__':
-	main()
+	other_main()
