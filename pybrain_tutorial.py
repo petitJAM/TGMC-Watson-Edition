@@ -5,14 +5,18 @@ from pybrain.structure.modules import TanhLayer
 
 ds = SupervisedDataSet(2, 1)
 
+nHiddenLayers = 4
+learningRate  = 1
+momentum      = 0.99
+
 # for i in range(10):
 ds.addSample((0,0), (0,))
 ds.addSample((0,1), (1,))
 ds.addSample((1,0), (1,))
 ds.addSample((1,1), (0,))
 
-net = buildNetwork(ds.indim, 4, ds.outdim, recurrent=True)
-trainer = BackpropTrainer(net, ds, learningrate=0.01, momentum=0.99)
+net = buildNetwork(ds.indim, nHiddenLayers, ds.outdim, recurrent=True)
+trainer = BackpropTrainer(net, ds, learningrate=learningRate, momentum=momentum)
 for epoch in range(0, 1000):
 	trainer.train()
 

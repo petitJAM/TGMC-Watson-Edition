@@ -27,26 +27,28 @@ nFeatures = 318   #obtained from previous runs
 
 # Configs
 
-nHiddenLayers = 2
+nHiddenLayers = 318
 training_iterations = 1
-learningRate = 0.05
-momentum = 0.99
+learningRate = 0.01
+momentum = 0.9
 lrDecay = 0
 weightDecay = 0
 
-topN = 100
+topN = 25
 
 # makes it smaller by randomly sampling the answers for each question
 def createBetterSupervisedDataSet(input_file):
 	print "Creating a BETTER supervised dataset from", input_file
 
 	ds = SupervisedDataSet(nFeatures, 1)
+	answers_by_question = {}
 
 	try:
 		with open(training_data_pickle_name, 'rb') as p:
 			print "Loading from pickle"
 			answers_by_question = pickle.load(p)
 			print "Load successful"
+			print "Size of answers_by_question:", len(answers_by_question.keys())
 
 	except IOError:
 		answers_by_question = loadAnswersByQuestion(input_file)
@@ -57,8 +59,11 @@ def createBetterSupervisedDataSet(input_file):
 		print "Saved to", training_data_pickle_name
 
 	# loop to load stuff into ds
+	for qid, answers in answers_by_question.iteritems():
+		for ans in answers:
+			ds.addSample(tuple(ans[1]), (ans[0],))
 
-	return None
+	return ds
 
 def loadAnswersByQuestion(input_file):
 	print "Loading from CSV"
@@ -69,20 +74,16 @@ def loadAnswersByQuestion(input_file):
 		for row in reader:
 
 			row_data = []
-			correct = 100 if row[-1] == "true" else 0
+			correct = 0
+
+			if row[-1] == "true":
+				correct = 1
 
 			for data in row:
 				try:
 					row_data.append(float(data))
 				except ValueError:
-					if data == 'true':
-						correct = 100
-
-					elif data == 'false':
-						correct = 0
-
-					else:
-						print "Something weird appeared"
+					pass
 
 			current_qid = int(row_data[1])
 
@@ -92,9 +93,10 @@ def loadAnswersByQuestion(input_file):
 			# need some random sampling
 			answers_by_question[current_qid].append((correct, row_data[2:]))
 
-	for qid in answers_by_question.keys():
-		print "Question:", qid
-		print "Number of trues:", sum([1 if answer[0] else 0 for answer in answers_by_question[qid]])
+	for qid in answers_by_question:
+		# Do something using the number of trues in each set
+		answers_by_question[qid] = [a for a in answers_by_question[qid] if a[0] or random.random() > .99]
+
 
 	print "Total Number of questions:", len(answers_by_question.keys())
 
@@ -114,7 +116,7 @@ def createSupervisedDataSetFromCSVFile(input_file):
 
 	    for row in reader:
 	        row_data = []
-	        correct = 100 if row[-1] == "true" else 0
+	        correct = 1 if row[-1] == "true" else 0
 
 	        if correct > 0 or random.random() < .9999: # speed up
 		        for data in row:
@@ -122,7 +124,7 @@ def createSupervisedDataSetFromCSVFile(input_file):
 		                row_data.append(float(data))
 		            except ValueError:
 		                if data == "true":
-		                    correct = 100
+		                    correct = 1
 		                elif data == "false":
 		                    correct = 0
 		                else:
@@ -193,18 +195,16 @@ def main():
 
 	print "Loading the training dataset..."
 
-	try: # Try to load the saved object from a pickle
-		with open(training_data_pickle_name) as p:
-			print "Loading from pickle"
-			ds = pickle.load(p)
+	ds = createBetterSupervisedDataSet(training_data_filename)
 
-	except IOError: # Pickle file didn't exists
-		print "Loading from CSV"
-		ds = createSupervisedDataSetFromCSVFile(training_data_filename)
+	# try: # Try to load the saved object from a pickle
+	# 	with open(training_data_pickle_name) as p:
+	# 		print "Loading from pickle"
+	# 		ds = pickle.load(p)
 
-		# with open(training_data_pickle_name, 'w') as p:
-		# 	print "Saving pickle..."
-		# 	ds.save_pickle(p)
+	# except IOError: # Pickle file didn't exists
+	# 	print "Loading from CSV"
+	# 	ds = createSupervisedDataSetFromCSVFile(training_data_filename)
 
 	print "Loading took", nextTime(), "seconds"
 	print
@@ -245,7 +245,8 @@ def main():
 	test_results = []
 
 	for d in test_data:
-		test_results.append((d[0], net.activate(d[1])[0]))
+		if random.random() > .75:
+			test_results.append((d[0], net.activate(d[1])[0]))
 
 	print "Average score:", sum([t[1] for t in test_results]) / len(test_results)
 
@@ -261,7 +262,6 @@ def main():
 	# write to answers.txt
 	with open("answers.txt", 'w') as ans:
 		for a in [int(a[0][0]) for a in test_results[-topN:]]:
-			print a
 			ans.write(str(a))
 			ans.write("\n")
 
@@ -299,4 +299,4 @@ def other_main():
 	print
 
 if __name__ == '__main__':
-	other_main()
+	main()
