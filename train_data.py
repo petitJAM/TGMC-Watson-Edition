@@ -47,51 +47,58 @@ def createBetterSupervisedDataSet(input_file):
 			print "Loading from pickle"
 			answers_by_question = pickle.load(p)
 			print "Load successful"
-			print answers_by_question.keys()
 
 	except IOError:
-		print "Loading from CSV"
-		with open(input_file) as training_data:
-			reader = csv.reader(training_data)
-
-			answers_by_question = {}
-			for row in reader:
-
-				row_data = []
-				correct = 100 if row[-1] == "true" else 0
-
-				for data in row:
-					try:
-						row_data.append(float(data))
-					except ValueError:
-						if data == 'true':
-							correct = 100
-
-						elif data == 'false':
-							correct = 0
-
-						else:
-							print "Something weird appeared"
-
-				current_qid = int(row_data[1])
-
-				if current_qid not in answers_by_question:
-					answers_by_question[current_qid] = []
-
-				answers_by_question[current_qid].append((correct, row_data[2:]))
-
-		for qid in answers_by_question.keys():
-			print "Question:", qid
-			print "Number of trues:", sum([1 if answer[0] else 0 for answer in answers_by_question[qid]])
-
-		print "Total Number of questions:", len(answers_by_question.keys())
+		answers_by_question = loadAnswersByQuestion(input_file)
 
 		print "Saving to a pickle..."
 		with open(training_data_pickle_name, 'wb') as p:
 			pickle.dump(answers_by_question, p)
+		print "Saved to", training_data_pickle_name
 
 	# loop to load stuff into ds
 
+	return None
+
+def loadAnswersByQuestion(input_file):
+	print "Loading from CSV"
+	with open(input_file) as training_data:
+		reader = csv.reader(training_data)
+
+		answers_by_question = {}
+		for row in reader:
+
+			row_data = []
+			correct = 100 if row[-1] == "true" else 0
+
+			for data in row:
+				try:
+					row_data.append(float(data))
+				except ValueError:
+					if data == 'true':
+						correct = 100
+
+					elif data == 'false':
+						correct = 0
+
+					else:
+						print "Something weird appeared"
+
+			current_qid = int(row_data[1])
+
+			if current_qid not in answers_by_question:
+				answers_by_question[current_qid] = []
+
+			# need some random sampling
+			answers_by_question[current_qid].append((correct, row_data[2:]))
+
+	for qid in answers_by_question.keys():
+		print "Question:", qid
+		print "Number of trues:", sum([1 if answer[0] else 0 for answer in answers_by_question[qid]])
+
+	print "Total Number of questions:", len(answers_by_question.keys())
+
+	return answers_by_question
 
 
 def createSupervisedDataSetFromCSVFile(input_file):
@@ -286,20 +293,7 @@ def other_main():
 	####################
 
 	print "IN OTHER_MAIN"
-	print "Loading the training dataset..."
-
-	try: # Try to load the saved object from a pickle
-		with open(training_data_pickle_name) as p:
-			print "Loading from pickle"
-			ds = pickle.load(p)
-
-	except IOError: # Pickle file didn't exists
-		print "Loading from CSV"
-		ds = createBetterSupervisedDataSet(training_data_filename)
-
-		# with open(training_data_pickle_name, 'w') as p:
-		# 	print "Saving pickle..."
-		# 	ds.save_pickle(p)
+	ds = createBetterSupervisedDataSet(training_data_filename)
 
 	print "Loading took", nextTime(), "seconds"
 	print
