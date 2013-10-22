@@ -36,40 +36,59 @@ weightDecay = 0
 
 topN = 100
 
+# makes it smaller by randomly sampling the answers for each question
 def createBetterSupervisedDataSet(input_file):
 	print "Creating a BETTER supervised dataset from", input_file
 
 	ds = SupervisedDataSet(nFeatures, 1)
 
-	with open(input_file) as training_data:
-		reader = csv.reader(training_data)
+	try:
+		with open(training_data_pickle_name, 'rb') as p:
+			print "Loading from pickle"
+			answers_by_question = pickle.load(p)
+			print "Load successful"
+			print answers_by_question.keys()
 
-		answer_by_question = {}
-		for row in reader:
+	except IOError:
+		print "Loading from CSV"
+		with open(input_file) as training_data:
+			reader = csv.reader(training_data)
 
-			row_data = []
-			correct = 0
+			answers_by_question = {}
+			for row in reader:
 
-			for data in row:
-				try:
-					row_data.append(float(data))
-				except ValueError:
-					if data == 'true':
-						correct = 100
-					elif data == 'false':
-						correct = 0
-					else:
-						print "Something weird appeared"
+				row_data = []
+				correct = 100 if row[-1] == "true" else 0
 
-			current_qid = row_data[1]
+				for data in row:
+					try:
+						row_data.append(float(data))
+					except ValueError:
+						if data == 'true':
+							correct = 100
 
-			if current_qid not in answer_by_question:
-				answer_by_question[current_qid] = []
+						elif data == 'false':
+							correct = 0
 
-			answer_by_question[current_qid].append((correct, row_data[2:]))
+						else:
+							print "Something weird appeared"
 
-		for qid in answer_by_question.keys():
-			print qid, answer_by_question[qid]
+				current_qid = int(row_data[1])
+
+				if current_qid not in answers_by_question:
+					answers_by_question[current_qid] = []
+
+				answers_by_question[current_qid].append((correct, row_data[2:]))
+
+		for qid in answers_by_question.keys():
+			print "Question:", qid
+			print "Number of trues:", sum([1 if answer[0] else 0 for answer in answers_by_question[qid]])
+
+		print "Total Number of questions:", len(answers_by_question.keys())
+
+		print "Saving to a pickle..."
+		with open(training_data_pickle_name, 'wb') as p:
+			pickle.dump(answers_by_question, p)
 
 	# loop to load stuff into ds
 
@@ -88,17 +107,19 @@ def createSupervisedDataSetFromCSVFile(input_file):
 
 	    for row in reader:
 	        row_data = []
-	        correct = 0 
-	        for data in row:
-	            try:
-	                row_data.append(float(data))
-	            except ValueError:
-	                if data == "true":
-	                    correct = 100
-	                elif data == "false":
-	                    correct = 0
-	                else:
-	                    print "Something weird appeared"
+	        correct = 100 if row[-1] == "true" else 0
+
+	        if correct > 0 or random.random() < .9999: # speed up
+		        for data in row:
+		            try:
+		                row_data.append(float(data))
+		            except ValueError:
+		                if data == "true":
+		                    correct = 100
+		                elif data == "false":
+		                    correct = 0
+		                else:
+		                    print "Something weird appeared"
 
 	        if correct:
 	        	correct_count += 1
@@ -172,7 +193,6 @@ def main():
 
 	except IOError: # Pickle file didn't exists
 		print "Loading from CSV"
-		print "This is where the dataset trimming would go"
 		ds = createSupervisedDataSetFromCSVFile(training_data_filename)
 
 		# with open(training_data_pickle_name, 'w') as p:
@@ -265,6 +285,7 @@ def other_main():
 	startTime()
 	####################
 
+	print "IN OTHER_MAIN"
 	print "Loading the training dataset..."
 
 	try: # Try to load the saved object from a pickle
@@ -274,7 +295,6 @@ def other_main():
 
 	except IOError: # Pickle file didn't exists
 		print "Loading from CSV"
-		print "This is where the dataset trimming would go"
 		ds = createBetterSupervisedDataSet(training_data_filename)
 
 		# with open(training_data_pickle_name, 'w') as p:
