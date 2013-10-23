@@ -11,9 +11,9 @@ def load_train_csv(input_file='datasets/tgmctrain.csv'):
 		reader = reader = csv.reader(training_data)
 
 		for row in reader:
-			if random.random() > 0.5:
+			if random.random() > 0.01 and row[-1] != 'true':
 				continue
-			ans.append(1.0 if row[-1] == 'true' else 0.0)
+			ans.append(row[-1])
 			row = [float(x) for x in row[:-1]]
 			ids.append(row[0])
 			data.append(row[1:])
@@ -49,7 +49,7 @@ if __name__ == '__main__':
 	data = pre.fit_transform(data, ans)
 	print 'PreProcessing Done.'
 
-	clf = svm.SVC()
+	clf = svm.SVC(gamma=0.0, verbose=True)
 
 	print 'Fitting SVC...'
 	print clf.fit(data,ans)
@@ -69,7 +69,13 @@ if __name__ == '__main__':
 	# write to answers.txt
 	with open("answers.txt", 'w') as ans:
 		for i in range(len(answers)):
-			# if answers[i] != 0:
-			ans.write(str(eval_ids[i]) + ',%d'%answers[i])
-			ans.write("\n")
+			if answers[i] == 'true':
+				ans.write(str(eval_ids[i]))
+				ans.write("\n")
+
+	trues = [x for x in answers if x == 'true']
+	falses = [x for x in answers if x == 'false']
+
+	print 'Number True: %d' % len(trues)
+	print 'Number Falses: %d' % len(falses)
 
