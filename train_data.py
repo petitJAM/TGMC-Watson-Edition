@@ -25,12 +25,15 @@ output_filename = output_dir + "output.csv"
 
 nFeatures = 318   #obtained from previous runs
 
+correctness_lo_val = 0
+correctness_hi_val = 100
+
 # Configs
 
-nHiddenLayers = 318
-training_iterations = 1
+nHiddenLayers = 2
+training_iterations = 2
 learningRate = 0.01
-momentum = 0.9
+momentum = 0.99
 lrDecay = 0
 weightDecay = 0
 
@@ -59,9 +62,14 @@ def createBetterSupervisedDataSet(input_file):
 		print "Saved to", training_data_pickle_name
 
 	# loop to load stuff into ds
-	for qid, answers in answers_by_question.iteritems():
-		for ans in answers:
-			ds.addSample(tuple(ans[1]), (ans[0],))
+	for qid in answers_by_question:
+		for aid in answers_by_question[qid]:
+			if aid != 'info':
+				ds.addSample( tuple(answers_by_question[qid][aid]['data']), (answers_by_question[qid][aid]['target'], ) )
+				# ds.addSample(tuple(ans[1]), (ans[0],))
+
+	for qid in answers_by_question:
+		print qid, "True:", sum([1 for a in answers_by_question[qid] if answers_by_question[a]['target'] > correctness_lo_val]), "out of", len(answers_by_question[qid])
 
 	return ds
 
@@ -74,10 +82,10 @@ def loadAnswersByQuestion(input_file):
 		for row in reader:
 
 			row_data = []
-			correct = 0
+			correct = correctness_lo_val
 
 			if row[-1] == "true":
-				correct = 1
+				correct = correctness_hi_val
 
 			for data in row:
 				try:
@@ -85,17 +93,42 @@ def loadAnswersByQuestion(input_file):
 				except ValueError:
 					pass
 
-			current_qid = int(row_data[1])
+			# Question ID and Answer ID
+			Q = int(row_data[1])
+			A = int(row_data[0])
 
-			if current_qid not in answers_by_question:
-				answers_by_question[current_qid] = []
+			if Q not in answers_by_question:
+				answers_by_question[Q] = {}
 
-			# need some random sampling
-			answers_by_question[current_qid].append((correct, row_data[2:]))
+			answers_by_question[Q][A] = { 'target': correct, 'data': row_data[2:] }
 
-	for qid in answers_by_question:
+	for qid in answers_by_question.keys():
 		# Do something using the number of trues in each set
-		answers_by_question[qid] = [a for a in answers_by_question[qid] if a[0] or random.random() > .99]
+		ntrue = sum([1 for a in answers_by_question[qid] if answers_by_question[qid][a]['target'] > correctness_lo_val])
+
+		# happens before 'info' is added so it doesn't 
+		nanswers = len(answers_by_question[qid])
+
+		if ntrue == 0:
+			del answers_by_question[qid]
+			continue
+
+		# we want about this many falses, so that true is roughly 40% of the samples
+		n_false_to_remove = nanswers - int(ntrue * 2.5)
+		print "Removing", n_false_to_remove, "false values"
+
+		for _ in range(n_false_to_remove):
+			candidate = random.choice(answers_by_question[qid].keys())
+			if answers_by_question[qid][candidate]['target'] == correctness_lo_val:
+				del answers_by_question[qid][candidate]
+
+
+		answers_by_question[qid]['info'] = {}
+		answers_by_question[qid]['info']['length'] = nanswers
+		answers_by_question[qid]['info']['nTrue'] = ntrue
+
+		print qid, "True:", ntrue, "out of", nanswers
+		# answers_by_question[qid] = [a for a in answers_by_question[qid] if a[0] > correctness_lo_val or random.random() > .75]
 
 
 	print "Total Number of questions:", len(answers_by_question.keys())
@@ -116,17 +149,17 @@ def createSupervisedDataSetFromCSVFile(input_file):
 
 	    for row in reader:
 	        row_data = []
-	        correct = 1 if row[-1] == "true" else 0
+	        correct = correctness_hi_val if row[-1] == "true" else correctness_lo_val
 
-	        if correct > 0 or random.random() < .9999: # speed up
+	        if correct > correctness_lo_val or random.random() < .9999: # speed up
 		        for data in row:
 		            try:
 		                row_data.append(float(data))
 		            except ValueError:
 		                if data == "true":
-		                    correct = 1
+		                    correct = correctness_hi_val
 		                elif data == "false":
-		                    correct = 0
+		                    correct = correctness_lo_val
 		                else:
 		                    print "Something weird appeared"
 
@@ -232,8 +265,7 @@ def main():
 	print "Training network", training_iterations, "times..."
 	for _ in range(training_iterations):
 		print "Error in training:", trainer.train() # Save this error and use as a confidence?
-
-	print "Training took", nextTime(), "seconds"
+		print "Iteration took", nextTime(), "seconds"
 
 	####################
 
