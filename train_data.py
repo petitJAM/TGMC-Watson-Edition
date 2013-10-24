@@ -30,9 +30,9 @@ correctness_hi_val = 100
 
 # Configs
 
-nHiddenLayers = 2
+nHiddenLayers = 318
 training_iterations = 2
-learningRate = 0.01
+learningRate = 1
 momentum = 0.99
 lrDecay = 0
 weightDecay = 0
@@ -68,8 +68,8 @@ def createBetterSupervisedDataSet(input_file):
 				ds.addSample( tuple(answers_by_question[qid][aid]['data']), (answers_by_question[qid][aid]['target'], ) )
 				# ds.addSample(tuple(ans[1]), (ans[0],))
 
-	for qid in answers_by_question:
-		print qid, "True:", sum([1 for a in answers_by_question[qid] if answers_by_question[a]['target'] > correctness_lo_val]), "out of", len(answers_by_question[qid])
+	# for qid in answers_by_question:
+	# 	print qid, "True:", sum([1 for a in answers_by_question[qid] if answers_by_question[a]['target'] > correctness_lo_val]), "out of", len(answers_by_question[qid])
 
 	return ds
 

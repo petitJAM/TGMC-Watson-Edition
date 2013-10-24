@@ -7,7 +7,7 @@ ds = SupervisedDataSet(2, 1)
 
 nHiddenLayers = 4
 learningRate  = 1
-momentum      = 0.99
+momentum      = 0.75
 
 # for i in range(10):
 ds.addSample((0,0), (0,))
