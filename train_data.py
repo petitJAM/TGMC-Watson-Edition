@@ -37,8 +37,8 @@ false_removal_factor = 1.1
 recurrent = True
 nHiddenLayers = 318
 training_iterations = 3
-learningRate = 0.1
-momentum = 0.6
+learningRate = 0.3
+momentum = 0.9
 lrDecay = .1
 weightDecay = 0
 
