@@ -42,7 +42,7 @@ momentum = 0.9
 lrDecay = .1
 weightDecay = 0
 
-topN = 500
+topN = 100
 
 def createNNforEachQuestionAnswerSet(input_file):
 	pass
@@ -76,7 +76,7 @@ def createBetterSupervisedDataSet(input_file):
 				ds.addSample( tuple(answers_by_question[qid][aid]['data']), (answers_by_question[qid][aid]['target'], ) )
 				# ds.addSample(tuple(ans[1]), (ans[0],))
 
-	return ds
+	return ds, answers_by_question
 
 def loadAnswersByQuestion(input_file):
 	print "Loading from CSV"
@@ -241,7 +241,7 @@ def main():
 
 	print "Loading the training dataset..."
 
-	ds = createBetterSupervisedDataSet(training_data_filename)
+	ds, abq = createBetterSupervisedDataSet(training_data_filename)
 
 	# try: # Try to load the saved object from a pickle
 	# 	with open(training_data_pickle_name) as p:
@@ -341,7 +341,7 @@ def other_main():
 	####################
 
 	print "IN OTHER_MAIN"
-	ds = createBetterSupervisedDataSet(training_data_filename)
+	ds, abq = createBetterSupervisedDataSet(training_data_filename)
 
 	print "Loading took", nextTime(), "seconds"
 	print
