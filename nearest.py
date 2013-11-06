@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import csv, math
 from sklearn.neighbors import KNeighborsClassifier
 

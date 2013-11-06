@@ -1,5 +1,6 @@
-# Read the training sample
+#!/usr/bin/python
 
+# Read the training sample
 import csv
 
 import pprint

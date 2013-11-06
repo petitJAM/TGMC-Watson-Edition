@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import csv, random
 from sklearn import svm
 from sklearn.preprocessing import StandardScaler

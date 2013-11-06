@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import csv, math
 
 import pprint
